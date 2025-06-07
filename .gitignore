@@ -1,0 +1,6 @@
+db.json
+.env
+videos/
+
+# cursor chats
+.specstory/

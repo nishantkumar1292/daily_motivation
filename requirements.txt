@@ -1,0 +1,3 @@
+yt-dlp==2025.5.22
+tweepy==4.15.0
+python-dotenv==1.1.0
