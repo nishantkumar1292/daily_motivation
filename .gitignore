@@ -4,3 +4,5 @@ videos/
 
 # cursor chats
 .specstory/
+
+__pycache__/

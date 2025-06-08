@@ -22,3 +22,8 @@ This repository contains a script that posts motivational videos to X (Twitter) 
     1. Use yt-dlp to download the video
     1. Build a service to post the video to X
 3. Second Goal: Build a service to post the videos to WhatsApp daily.
+
+
+## Next
+1. Create an X channel, and create a cron job that does these posts regularly.
+2. Start a whatsapp channel and post there as well.
