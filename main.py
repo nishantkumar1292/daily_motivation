@@ -24,6 +24,7 @@ class Database:
                 filepath TEXT,
                 successful_person TEXT,
                 post_id TEXT,
+                x_media_id TEXT,
                 data TEXT  -- JSON blob for any additional data
             )
         ''')
@@ -66,6 +67,23 @@ class Database:
         conn.commit()
         conn.close()
 
+    def update_video_media_id(self, video_id, media_id):
+        """Update a video's x_media_id"""
+        conn = sqlite3.connect(self.db_file)
+        # First get the current data to update the JSON blob
+        cursor = conn.execute('SELECT data FROM videos WHERE id = ?', (video_id,))
+        row = cursor.fetchone()
+        if row:
+            video_data = json.loads(row[0])
+            video_data["x_media_id"] = media_id
+            conn.execute('''
+                UPDATE videos
+                SET x_media_id = ?, data = ?
+                WHERE id = ?
+            ''', (media_id, json.dumps(video_data), video_id))
+        conn.commit()
+        conn.close()
+
     def get_unposted_videos(self):
         """Get videos that haven't been posted yet"""
         conn = sqlite3.connect(self.db_file)
@@ -90,6 +108,22 @@ class Database:
             videos_dict[video_id] = video_data
         conn.close()
         return videos_dict
+
+    def get_video_media_id(self, video_id):
+        """Get the cached media_id for a video"""
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.execute('SELECT x_media_id FROM videos WHERE id = ?', (video_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row and row[0] else None
+
+    def delete_video(self, video_id):
+        """Delete a video from the database"""
+        conn = sqlite3.connect(self.db_file)
+        conn.execute('DELETE FROM videos WHERE id = ?', (video_id,))
+        conn.commit()
+        conn.close()
+        print(f"Deleted video {video_id} from database")
 
     def migrate_from_json(self, json_file="db.json"):
         """Migrate data from JSON database to SQLite"""
@@ -150,14 +184,42 @@ class Video:
         # create output directory if it doesn't exist
         os.makedirs(self.output_dir, exist_ok=True)
 
+    def _duration_filter(self, info_dict):
+        """Filter videos by duration - only allow videos under 10 minutes for Twitter"""
+        duration = info_dict.get('duration')
+        if duration is None:
+            # If duration is unknown, allow it (some videos don't have duration info)
+            return None
+
+        # Twitter limit: 10 minutes = 600 seconds
+        max_duration = 600
+
+        if duration > max_duration:
+            minutes = duration // 60
+            seconds = duration % 60
+            print(f"    SKIPPING: Video too long ({minutes}m {seconds}s) - Twitter limit is 10 minutes")
+            return f"Video duration {duration}s exceeds Twitter limit of {max_duration}s"
+
+        return None  # None means accept the video
+
     def get_videos(self):
         query = f"motivational interview or speech or talk + {self.successful_person}"
 
-        # Specify exact output path
+        # Specify exact output path and duration limit for Twitter
         ydl_opts = {
             'outtmpl': os.path.join(self.output_dir, '%(title)s.%(ext)s'),
-            # Use default format selection to avoid format availability issues
-            'compat_opts': ['prefer-vp9-sort'],  # Revert to pre-2024.11.04 format prioritization
+            'merge_output_format': 'mp4',
+            # Post-processors to ensure MP4 with H.264 codec for Twitter compatibility
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'mp4',
+            }],
+            # Force re-encoding to H.264 if needed
+            'postprocessor_args': {
+                'ffmpeg': ['-c:v', 'libx264', '-c:a', 'aac', '-preset', 'medium']
+            },
+            # Only download videos under 10 minutes (600 seconds) for Twitter compatibility
+            'match_filter': self._duration_filter,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             result = ydl.extract_info(f"ytsearch{self.num_videos * 3}:{query}", download=False)
@@ -246,8 +308,10 @@ if __name__ == "__main__":
         file_path = video_data["filepath"]
 
     print(f"Posting video {video_id} with title {video_data['title']}")
-    xposter = XPoster()
-    post_id = xposter.post(file_path, successful_person, video_data["webpage_url"])
+
+    # Initialize XPoster - will use community_id from environment variable if set
+    xposter = XPoster(db=db)
+    post_id = xposter.post(file_path, successful_person, video_data["webpage_url"], video_id=video_id)
     print(f"Posted video {video_id}")
     # update the video with the post_id
     db.update_video(video_id, post_id)

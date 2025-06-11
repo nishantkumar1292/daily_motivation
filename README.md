@@ -25,5 +25,7 @@ This repository contains a script that posts motivational videos to X (Twitter) 
 
 
 ## Next
-1. Create an X channel, and create a cron job that does these posts regularly.
-2. Start a whatsapp channel and post there as well.
+1. Expand the search if all of the videos are more than 10 minutes.
+2. Create a cron job that does these posts regularly.
+3. Start a whatsapp channel and post there as well.
+4. Can I create interview like videos from X posts, using AI?
