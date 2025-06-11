@@ -1,5 +1,11 @@
+# db files
 db.json
+db.sqlite
+
+# env files
 .env
+
+# videos
 videos/
 
 # cursor chats
