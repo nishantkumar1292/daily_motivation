@@ -125,32 +125,6 @@ class Database:
         conn.close()
         print(f"Deleted video {video_id} from database")
 
-    def migrate_from_json(self, json_file="db.json"):
-        """Migrate data from JSON database to SQLite"""
-        if not os.path.exists(json_file):
-            print(f"JSON file {json_file} not found. Nothing to migrate.")
-            return
-
-        print(f"Migrating data from {json_file} to SQLite...")
-
-        with open(json_file, "r") as f:
-            json_videos = json.load(f)
-
-        migrated_count = 0
-        for video_id, video_data in json_videos.items():
-            self.add_video(video_data)
-            migrated_count += 1
-
-        print(f"Successfully migrated {migrated_count} videos to SQLite database.")
-
-        # Optionally backup the JSON file
-        backup_file = f"{json_file}.backup"
-        import shutil
-        shutil.copy2(json_file, backup_file)
-        print(f"Original JSON file backed up as {backup_file}")
-
-        return migrated_count
-
     def view_records(self):
         """View all records in the database in a formatted way"""
         conn = sqlite3.connect(self.db_file)
