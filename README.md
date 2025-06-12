@@ -7,6 +7,9 @@ This repository contains a script that posts motivational videos to X (Twitter) 
     - `TWITTER_API_SECRET`
     - `TWITTER_ACCESS_TOKEN`
     - `TWITTER_ACCESS_TOKEN_SECRET`
+    - `TWITTER_BEARER_TOKEN`
+    - `TWITTER_COMMUNITY_ID` # incase you want to post to a community
+    - `OPENAI_API_KEY` # for generating the post
 2. Install the dependencies. Preferably do this in a virtual environment.
     ```bash
     pip install -r requirements.txt
@@ -30,3 +33,4 @@ This repository contains a script that posts motivational videos to X (Twitter) 
 3. Create a cron job that does these posts regularly.
 4. Start a whatsapp channel and post there as well.
 4. Can I create interview like videos from X posts, using AI?
+5. Can I tag the person in the video? I think I need to predefine the X handle for the person.

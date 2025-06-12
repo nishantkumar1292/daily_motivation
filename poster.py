@@ -4,9 +4,52 @@ import requests
 import json
 import time
 from requests_oauthlib import OAuth1
+import openai
+import whisper
+
+class InspiringPostGenerator:
+    def __init__(self, openai_api_key=None, whisper_model_size="base"):
+        self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        self.whisper_model_size = whisper_model_size
+        self._whisper_model = None
+
+    def transcribe(self, video_path):
+        if self._whisper_model is None:
+            self._whisper_model = whisper.load_model(self.whisper_model_size)
+        result = self._whisper_model.transcribe(video_path)
+        return result["text"]
+
+    def generate_post(self, transcript, person_name):
+        openai.api_key = self.openai_api_key
+        prompt = f"""
+You are a world-class motivational storyteller and social media expert.
+
+Given the following transcript from a motivational video featuring {person_name}, write an inspiring, story-like social media post. The post should:
+- Summarize the key message and emotional highlights of the video
+- Highlight why {person_name} is so motivating
+- Be compelling and make readers want to watch the video
+- Be concise (max 280 characters), but vivid and emotionally engaging
+
+Transcript:
+"""
+        prompt += transcript + "\n\nSocial media post:"
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a world-class motivational storyteller and social media expert."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=120,
+            temperature=0.9,
+        )
+        return response.choices[0].message.content.strip()
+
+    def generate_inspiring_post_from_video(self, video_path, person_name):
+        transcript = self.transcribe(video_path)
+        return self.generate_post(transcript, person_name)
 
 class XPoster:
-    def __init__(self, community_id=None, db=None):
+    def __init__(self, community_id=None, db=None, post_generator=None):
         # Twitter API credentials
         self.api_key = os.getenv("TWITTER_API_KEY")
         self.api_secret = os.getenv("TWITTER_API_SECRET")
@@ -33,6 +76,8 @@ class XPoster:
         auth = tweepy.OAuthHandler(self.api_key, self.api_secret)
         auth.set_access_token(self.access_token, self.access_token_secret)
         self.api = tweepy.API(auth, wait_on_rate_limit=True)
+
+        self.post_generator = post_generator or InspiringPostGenerator()
 
     def wait_for_media_processing(self, media_id):
         """Wait for Twitter to finish processing the uploaded media"""
@@ -80,8 +125,10 @@ class XPoster:
             # Wait for video processing to complete
             self.wait_for_media_processing(media_id)
 
-            # TODO: get a more interesting text from analyzing the video
-            text = f"Motivational stuff from {successful_person.title()}"
+            # Use AI to generate an inspiring post
+            print("Generating inspiring post text using AI...")
+            text = self.post_generator.generate_inspiring_post_from_video(video_path, successful_person)
+            print(f"Generated post: {text}")
 
             # Use direct API call for community posting
             if self.community_id:
