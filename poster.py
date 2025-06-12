@@ -128,6 +128,9 @@ class XPoster:
             # Use AI to generate an inspiring post
             print("Generating inspiring post text using AI...")
             text = self.post_generator.generate_inspiring_post_from_video(video_path, successful_person)
+            # Remove leading and trailing double quotes if present
+            if text.startswith('"') and text.endswith('"'):
+                text = text[1:-1].strip()
             print(f"Generated post: {text}")
 
             # Use direct API call for community posting
