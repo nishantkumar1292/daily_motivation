@@ -35,3 +35,4 @@ This repository contains a script that posts motivational videos to X (Twitter) 
 4. Can I create interview like videos from X posts, using AI?
 5. Can I tag the person in the video? I think I need to predefine the X handle for the person.
 6. Can I take a large video and find an interesting part of 10 minutes (10 minutes is the X.com limit) and then post that?
+7. I can also take a podcast, and create a short thread containing videos of 10 minutes each.
