@@ -19,16 +19,17 @@ class InspiringPostGenerator:
         result = self._whisper_model.transcribe(video_path)
         return result["text"]
 
-    def generate_post(self, transcript, person_name):
+    def generate_post(self, transcript, video_title):
         openai.api_key = self.openai_api_key
         prompt = f"""
 You are a world-class motivational storyteller and social media expert.
 
-Given the following transcript from a motivational video featuring {person_name}, write an inspiring, story-like social media post. The post should:
+Given the following transcript from a motivational video titled `{video_title}`, write an inspiring, story-like social media post. The post should:
 - Summarize the key message and emotional highlights of the video
-- Highlight why {person_name} is so motivating
+- Highlight why the person in the video is so motivating
 - Be compelling and make readers want to watch the video
-- Be concise (max 280 characters), but vivid and emotionally engaging
+- Be concise (max 512 characters), but vivid and emotionally engaging
+- Don't add any hashtags
 
 Transcript:
 """
@@ -39,14 +40,14 @@ Transcript:
                 {"role": "system", "content": "You are a world-class motivational storyteller and social media expert."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=120,
+            max_tokens=512,
             temperature=0.9,
         )
         return response.choices[0].message.content.strip()
 
-    def generate_inspiring_post_from_video(self, video_path, person_name):
+    def generate_inspiring_post_from_video(self, video_path, video_title):
         transcript = self.transcribe(video_path)
-        return self.generate_post(transcript, person_name)
+        return self.generate_post(transcript, video_title)
 
 class XPoster:
     def __init__(self, community_id=None, db=None, post_generator=None):
@@ -115,7 +116,7 @@ class XPoster:
 
         raise Exception("Media processing timeout - took too long to process")
 
-    def post(self, video_path, successful_person, video_url, video_id=None):
+    def post(self, video_path, video_title, video_url, video_id=None):
         try:
             # Always upload video fresh since media_ids expire quickly
             print("Uploading video...")
@@ -127,7 +128,7 @@ class XPoster:
 
             # Use AI to generate an inspiring post
             print("Generating inspiring post text using AI...")
-            text = self.post_generator.generate_inspiring_post_from_video(video_path, successful_person)
+            text = self.post_generator.generate_inspiring_post_from_video(video_path, video_title)
             # Remove leading and trailing double quotes if present
             if text.startswith('"') and text.endswith('"'):
                 text = text[1:-1].strip()

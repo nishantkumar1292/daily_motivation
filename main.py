@@ -159,14 +159,19 @@ class Video:
         os.makedirs(self.output_dir, exist_ok=True)
 
     def _duration_filter(self, info_dict):
-        """Filter videos by duration - only allow videos under 10 minutes for Twitter"""
+        """Filter videos by duration - only allow videos between 1-10 minutes for Twitter"""
         duration = info_dict.get('duration')
         if duration is None:
             # If duration is unknown, allow it (some videos don't have duration info)
             return None
 
-        # Twitter limit: 10 minutes = 600 seconds
-        max_duration = 600
+        # Duration limits: minimum 1 minute, maximum 10 minutes for Twitter
+        min_duration = 60   # 1 minute = 60 seconds
+        max_duration = 600  # 10 minutes = 600 seconds
+
+        if duration < min_duration:
+            print(f"    SKIPPING: Video too short ({duration}s) - minimum is 1 minute")
+            return f"Video duration {duration}s is less than minimum {min_duration}s"
 
         if duration > max_duration:
             minutes = duration // 60
@@ -195,55 +200,74 @@ class Video:
             # Only download videos under 10 minutes (600 seconds) for Twitter compatibility
             'match_filter': self._duration_filter,
         }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            result = ydl.extract_info(f"ytsearch{self.num_videos * 3}:{query}", download=False)
 
-            print(f"Found {len(result['entries'])} potential videos for {self.successful_person}")
+        # Progressive search expansion: start with 5, then 10, 20, 30 videos
+        search_sizes = [5, 10, 20, 30]
+        checked_video_ids = set()  # Track videos we've already processed
 
-            for i, entry in enumerate(result["entries"]):
-                video_id = entry["id"]
-                video_title = entry.get("title", "Unknown Title")
+        for search_size in search_sizes:
+            print(f"Searching for {search_size} videos...")
 
-                # Check if video is already in database
-                if video_id in self.db.videos:
-                    print(f"  [{i+1}] SKIP: Video already in database - {video_title[:60]}...")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                result = ydl.extract_info(f"ytsearch{search_size}:{query}", download=False)
 
-                    # Double-check if the file actually exists on disk
-                    existing_video = self.db.videos[video_id]
-                    if existing_video.get("filepath") and os.path.exists(existing_video["filepath"]):
-                        continue
-                    else:
-                        print(f"    WARNING: Database entry exists but file missing: {existing_video.get('filepath')}")
-                        print(f"    Re-downloading this video...")
+                print(f"Found {len(result['entries'])} potential videos for {self.successful_person}")
+                new_videos_in_batch = 0
 
-                print(f"  [{i+1}] DOWNLOADING: {video_title[:60]}...")
+                for i, entry in enumerate(result["entries"]):
+                    video_id = entry["id"]
+                    video_title = entry.get("title", "Unknown Title")
 
-                try:
-                    # download the video and get the actual file path
-                    download_result = ydl.extract_info(entry["webpage_url"], download=True)
-                    actual_filename = ydl.prepare_filename(download_result)
-
-                    # Verify the file was actually downloaded
-                    if not os.path.exists(actual_filename):
-                        print(f"    ERROR: Download failed - file not found: {actual_filename}")
+                    # Skip if we've already checked this video in a previous search
+                    if video_id in checked_video_ids:
                         continue
 
-                    # add filepath to entry
-                    entry["filepath"] = actual_filename
-                    # add successful person to entry
-                    entry["successful_person"] = self.successful_person
-                    self.db.add_video(entry)
+                    # Add to checked set
+                    checked_video_ids.add(video_id)
+                    new_videos_in_batch += 1
 
-                    print(f"    SUCCESS: Downloaded and saved to database")
-                    print(f"    File: {actual_filename}")
-                    return entry["id"]
+                    # Check if video is already in database
+                    if video_id in self.db.videos:
+                        print(f"  [{i+1}] SKIP: Video already in database - {video_title[:60]}...")
 
-                except Exception as e:
-                    print(f"    ERROR: Failed to download video {video_id}: {str(e)}")
-                    continue
+                        # Double-check if the file actually exists on disk
+                        existing_video = self.db.videos[video_id]
+                        if existing_video.get("filepath") and os.path.exists(existing_video["filepath"]):
+                            continue
+                        else:
+                            print(f"    WARNING: Database entry exists but file missing: {existing_video.get('filepath')}")
+                            print(f"    Re-downloading this video...")
 
-            print(f"ERROR: No new videos found for {self.successful_person} after checking {len(result['entries'])} videos")
-            return None
+                    print(f"  [{i+1}] DOWNLOADING: {video_title[:60]}...")
+
+                    try:
+                        # download the video and get the actual file path
+                        download_result = ydl.extract_info(entry["webpage_url"], download=True)
+                        actual_filename = ydl.prepare_filename(download_result)
+
+                        # Verify the file was actually downloaded
+                        if not os.path.exists(actual_filename):
+                            print(f"    ERROR: Download failed - file not found: {actual_filename}")
+                            continue
+
+                        # add filepath to entry
+                        entry["filepath"] = actual_filename
+                        # add successful person to entry
+                        entry["successful_person"] = self.successful_person
+                        self.db.add_video(entry)
+
+                        print(f"    SUCCESS: Downloaded and saved to database")
+                        print(f"    File: {actual_filename}")
+                        return entry["id"]
+
+                    except Exception as e:
+                        print(f"    ERROR: Failed to download video {video_id}: {str(e)}")
+                        continue
+
+                print(f"No new videos found in this batch ({new_videos_in_batch} new videos checked, {len(checked_video_ids)} total checked)")
+
+        print(f"ERROR: No new videos found for {self.successful_person} after checking {len(checked_video_ids)} total videos")
+        return None
 
 
 def get_successful_person():
@@ -285,7 +309,7 @@ if __name__ == "__main__":
 
     # Initialize XPoster - will use community_id from environment variable if set
     xposter = XPoster(db=db)
-    post_id = xposter.post(file_path, successful_person, video_data["webpage_url"], video_id=video_id)
+    post_id = xposter.post(file_path, video_data["title"], video_data["webpage_url"], video_id=video_id)
     print(f"Posted video {video_id}")
     # update the video with the post_id
     db.update_video(video_id, post_id)
