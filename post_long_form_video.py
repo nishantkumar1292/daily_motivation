@@ -8,9 +8,8 @@ import subprocess
 from text_matching import find_robust_timestamps
 from poster import XPoster
 
-def find_long_form_video_url():
+def find_long_form_video_url(video_url):
     # TODO: add a youtube search to find the long form video url
-    video_url = "https://www.youtube.com/watch?v=hcvmq-hcDIE"
     return video_url
 
 def download_video(video_url):
@@ -313,7 +312,7 @@ def extract_video_snippets(video_path, snippet_timestamps):
 
     return extracted_files
 
-def post_video_snippets(snippets_metadata, video_url):
+def post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle):
     poster = XPoster()
     previous_post_id = None
 
@@ -336,7 +335,7 @@ def post_video_snippets(snippets_metadata, video_url):
             previous_post_id = post.data["id"]
         else:
             # First post in thread
-            intro_text = "I recently watched a video from @rajshamani and I found it interesting. Sharing some important snippets in the thread below:\n\n"
+            intro_text = f"I recently watched a video from @{video_speaker_x_handle} and I found it interesting. Sharing some important snippets in the thread below:\n\n"
             full_text = intro_text + text
             post = poster.client.create_tweet(
                 text=full_text,
@@ -351,7 +350,11 @@ def post_video_snippets(snippets_metadata, video_url):
     )
 
 if __name__ == "__main__":
-    video_url = find_long_form_video_url()
+    #TODO: hardcoded stuff to run the script
+    video_url = "https://www.youtube.com/watch?v=hcvmq-hcDIE"
+    video_speaker_x_handle = "rajshamani"
+
+    video_url = find_long_form_video_url(video_url)
 
     # download video
     video_path = download_video(video_url)
@@ -372,4 +375,4 @@ if __name__ == "__main__":
     snippets_metadata = extract_video_snippets(video_path, snippet_timestamps)
 
     # post video snippets
-    post_video_snippets(snippets_metadata, video_url)
+    post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle)
