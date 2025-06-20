@@ -12,3 +12,12 @@ videos/
 .specstory/
 
 __pycache__/
+
+# assets
+test_videos/
+extracted_snippets/
+narratives.json
+snippet_timestamps.json
+transcription.json
+
+.DS_Store
