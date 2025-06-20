@@ -375,4 +375,5 @@ if __name__ == "__main__":
     snippets_metadata = extract_video_snippets(video_path, snippet_timestamps)
 
     # post video snippets
+    #TODO: post to community
     post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle)
