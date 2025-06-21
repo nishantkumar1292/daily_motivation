@@ -5,9 +5,12 @@ import whisper
 import openai
 import subprocess
 import yaml
+from dotenv import load_dotenv
 
 from text_matching import find_robust_timestamps
 from poster import XPoster
+
+load_dotenv()
 
 def download_video(video_url, video_directory):
     ydl_opts = {
