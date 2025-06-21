@@ -153,7 +153,7 @@ class XPoster:
             print(f"Error posting video: {e}")
             raise e
 
-    def _post_to_community(self, text, media_id, video_url):
+    def _post_to_community(self, text, media_id, post_reply=False, video_url=None):
         """Post directly to Twitter Community using X API v2 with OAuth 1.0a"""
         url = "https://api.twitter.com/2/tweets"
 
@@ -194,7 +194,8 @@ class XPoster:
             print(f"Post ID: {post_id}")
 
             # Add comment with video source
-            self._post_reply(video_url, post_id)
+            if post_reply:
+                self._post_reply(video_url, post_id)
 
             return post_id
 

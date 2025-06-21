@@ -149,3 +149,4 @@ daily_motivation/
 - [ ] Support for longer videos (>10 minutes per clip)
 - [ ] Speaker tagging and attribution improvements
 - [ ] Custom theme configuration
+- [ ] Auto detection of themes from the video

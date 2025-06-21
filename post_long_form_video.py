@@ -307,8 +307,8 @@ def extract_video_snippets(video_path, snippet_timestamps, snippets_metadata_fil
 
     return extracted_files
 
-def post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle):
-    poster = XPoster()
+def post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle, community_id=None):
+    poster = XPoster(community_id=community_id)
     previous_post_id = None
 
     for snippet in snippets_metadata:
@@ -332,11 +332,17 @@ def post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle):
             # First post in thread
             intro_text = f"I recently watched a video from @{video_speaker_x_handle} and I found it interesting. Sharing some important snippets in the thread below:\n\n"
             full_text = intro_text + text
-            post = poster.client.create_tweet(
-                text=full_text,
-                media_ids=[media_id]
-            )
-            previous_post_id = post.data["id"]
+
+            if community_id:
+                # Use direct community posting for first post
+                post_id = poster._post_to_community(full_text, media_id, post_reply=False)
+                previous_post_id = post_id
+            else:
+                post = poster.client.create_tweet(
+                    text=full_text,
+                    media_ids=[media_id]
+                )
+                previous_post_id = post.data["id"]
 
     # Add source video link as final reply
     poster.client.create_tweet(
@@ -350,6 +356,7 @@ if __name__ == "__main__":
 
     video_url = config["video_url"]
     video_speaker_x_handle = config["video_speaker_x_handle"]
+    community_id = config.get("community_id")
 
     # Setup files and directories
     video_id = video_url.split("v=")[1]
@@ -380,5 +387,4 @@ if __name__ == "__main__":
     snippets_metadata = extract_video_snippets(video_path, snippet_timestamps, snippets_metadata_file=snippets_metadata_file)
 
     # post video snippets
-    #TODO: post to community
-    post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle)
+    post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle, community_id)
