@@ -150,3 +150,7 @@ daily_motivation/
 - [ ] Speaker tagging and attribution improvements
 - [ ] Custom theme configuration
 - [ ] Auto detection of themes from the video
+
+## Work tomorrow
+
+- Community posting is not working. Need to fix it.
