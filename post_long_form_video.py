@@ -4,17 +4,14 @@ import os
 import whisper
 import openai
 import subprocess
+import yaml
 
 from text_matching import find_robust_timestamps
 from poster import XPoster
 
-def find_long_form_video_url(video_url):
-    # TODO: add a youtube search to find the long form video url
-    return video_url
-
-def download_video(video_url):
+def download_video(video_url, video_directory):
     ydl_opts = {
-        'outtmpl': 'videos/%(title)s.%(ext)s',
+        'outtmpl': f'{video_directory}/%(title)s.%(ext)s',
         'merge_output_format': 'mp4',
         'postprocessors': [{
             'key': 'FFmpegVideoConvertor',
@@ -237,11 +234,10 @@ def cleanup_snippet_timestamps(snippet_timestamps):
 
     return cleaned_snippet_timestamps
 
-def extract_video_snippets(video_path, snippet_timestamps):
+def extract_video_snippets(video_path, snippet_timestamps, snippets_metadata_file):
     """Extract video snippets using ffmpeg based on timestamps"""
 
     output_folder = "extracted_snippets"
-    snippets_metadata_file = os.path.join(output_folder, 'snippets_metadata.json')
 
     if os.path.exists(snippets_metadata_file):
         with open(snippets_metadata_file, 'r') as f:
@@ -303,12 +299,11 @@ def extract_video_snippets(video_path, snippet_timestamps):
             print(f"✗ Error extracting {snippet['title']}: {e}")
 
     # Save metadata
-    metadata_file = os.path.join(output_folder, 'snippets_metadata.json')
-    with open(metadata_file, 'w') as f:
+    with open(snippets_metadata_file, 'w') as f:
         json.dump(extracted_files, f, indent=2)
 
     print(f"\n✅ Extraction complete! {len(extracted_files)} snippets extracted to: {output_folder}")
-    print(f"📄 Metadata saved to: {metadata_file}")
+    print(f"📄 Metadata saved to: {snippets_metadata_file}")
 
     return extracted_files
 
@@ -350,29 +345,39 @@ def post_video_snippets(snippets_metadata, video_url, video_speaker_x_handle):
     )
 
 if __name__ == "__main__":
-    #TODO: hardcoded stuff to run the script
-    video_url = "https://www.youtube.com/watch?v=hcvmq-hcDIE"
-    video_speaker_x_handle = "rajshamani"
+    with open("config.yaml", "r") as f:
+        config = yaml.safe_load(f)
 
-    video_url = find_long_form_video_url(video_url)
+    video_url = config["video_url"]
+    video_speaker_x_handle = config["video_speaker_x_handle"]
+
+    # Setup files and directories
+    video_id = video_url.split("v=")[1]
+    video_directory = f"videos/{video_id}"
+    os.makedirs(video_directory, exist_ok=True)
+
+    transcription_file = f"{video_directory}/transcription.json"
+    narratives_file = f"{video_directory}/narratives.json"
+    snippet_timestamps_file = f"{video_directory}/snippet_timestamps.json"
+    snippets_metadata_file = f"{video_directory}/snippets_metadata.json"
 
     # download video
-    video_path = download_video(video_url)
+    video_path = download_video(video_url, video_directory)
 
     # transcribe video
-    video_transcription = transcribe_video(video_path, transcription_file="transcription.json")
+    video_transcription = transcribe_video(video_path, transcription_file=transcription_file)
 
     # extract narratives
-    narratives = extract_narratives(video_transcription, narratives_file="narratives.json")
+    narratives = extract_narratives(video_transcription, narratives_file=narratives_file)
 
     # extract snippet timestamps
-    snippet_timestamps = extract_snippet_timestamps(video_transcription, narratives, snippet_timestamps_file="snippet_timestamps.json")
+    snippet_timestamps = extract_snippet_timestamps(video_transcription, narratives, snippet_timestamps_file=snippet_timestamps_file)
 
     # cleanup snippets to not have intersecting timestamps
     snippet_timestamps = cleanup_snippet_timestamps(snippet_timestamps)
 
     # extract video snippets
-    snippets_metadata = extract_video_snippets(video_path, snippet_timestamps)
+    snippets_metadata = extract_video_snippets(video_path, snippet_timestamps, snippets_metadata_file=snippets_metadata_file)
 
     # post video snippets
     #TODO: post to community

@@ -21,3 +21,5 @@ snippet_timestamps.json
 transcription.json
 
 .DS_Store
+
+config.yaml

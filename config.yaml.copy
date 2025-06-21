@@ -1,0 +1,3 @@
+# currently only supports youtube urls
+video_url: <put the youtube url here>
+video_speaker_x_handle: <put the x handle of the speaker in the video here>
